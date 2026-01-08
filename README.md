@@ -54,7 +54,7 @@ Benchmarking 1 million concurrent order operations against standard STL `new`/`d
 | **Latency (1M Ops)** | ~117ms | **~12ms** | **9.7x** |
 | **Fragmentation** | High | **Zero** | - |
 
-![Performance Results](https://github.com/stym01/Custom-Allocator-HFT-Engine/blob/master/docs/images/benchmar.png)
+![Performance Results](https://github.com/stym01/Custom-Allocator-HFT-Engine/blob/master/docs/images/benchmark.png)
 
 ---
 
