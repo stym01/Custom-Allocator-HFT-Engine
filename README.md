@@ -51,7 +51,7 @@ Benchmarking 1 million concurrent order operations against standard STL `new`/`d
 
 | Metric | Standard Malloc | Custom Pool/Linear | Speedup |
 |:---|:---:|:---:|:---:|
-| **Latency (1M Ops)** | ~117ms | **~12ms** | **9.7x** |
+| **Latency (1M Ops)** | ~117ms | **~7.35ms** | **16x** |
 | **Fragmentation** | High | **Zero** | - |
 
 ![Performance Results](https://github.com/stym01/Custom-Allocator-HFT-Engine/blob/master/docs/benchmark.png)
