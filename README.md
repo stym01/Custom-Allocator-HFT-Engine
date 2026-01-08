@@ -78,14 +78,14 @@ This is the simplest kind of allocator. The idea is to keep a pointer at the fir
 ### Data structure
 This allocator only requires a pointer (or an offset) to tell us the position of the last allocation. It doesn't require any extra information or data structure.
 
-![Data structure of a Linear Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/linear1.png)
+![Data structure of a Linear Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/linear1.png)
 
 _Complexity: **O(1)**_
 
 ### Allocate
 Simply move the pointer (or offset) forward.
 
-![Allocating memory in a Linear Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/linear2.png)
+![Allocating memory in a Linear Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/linear2.png)
 
 _Complexity: **O(1)**_
 
@@ -98,48 +98,48 @@ This is a smart evolution of the Linear Allocator. The idea is to manage the mem
 ### Data structure
 As I said, we need the pointer (or offset) to keep track of the last allocation. In order to be able to free memory, we also need to store a _header_ for each allocation that tell us the size of the allocated block. Thus, when we free, we know how many positions we have to move back the pointer. 
 
-![Data structure of a Stack Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/stack1.png)
+![Data structure of a Stack Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/stack1.png)
 
 _Complexity: **O(N*H) --> O(N)**_ where H is the Header size and N is the number of allocations
 
 ### Allocate
 Simply move the pointer (or offset) forward and place a header right before the memory block indicating its size.
 
-![Allocating memory in a Stack Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/stack2.png)
+![Allocating memory in a Stack Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/stack2.png)
 
 _Complexity: **O(1)**_
 
 ### Free
 Simply read the block size from the header and move the pointer backwards given that size.
 
-![Freeing memory in a Stack Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/stack3.png)
+![Freeing memory in a Stack Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/stack3.png)
 
 _Complexity: **O(1)**_
 
 ## Pool allocator
 A Pool allocator is quite different from the previous ones. It splits the big memory chunk in smaller chunks of the same size and keeps track of which of them are free. When an allocation is requested it returns the free chunk size. When a freed is done, it just stores it to be used in the next allocation. This way, allocations work super fast and the fragmentation is still very low.
 
-![Splitting scheme in a Pool Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/pool1.png)
+![Splitting scheme in a Pool Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/pool1.png)
 
 ### Data structure
 To keep track of the free blocks of memory, the Pool allocator uses a Linked List that links the address of each free memory block. 
 
-![Linked List used in a Pool Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/pool2.png)
+![Linked List used in a Pool Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/pool2.png)
 
 To reduce the space needed, this **Linked List is stored in the same free blocks** (smart right?). However, this set the constraint that the data chunks must be at least as big as our nodes in the Linked List (so that, we can store the Linked List in the free memory blocks).
 
-![In memory Linked List used in a Pool Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/pool3.png)
+![In memory Linked List used in a Pool Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/pool3.png)
 
 _Complexity: **O(1)**_ 
 
 ### Allocate
 An allocation simply means to take (pop) the first free block of the Linked List.
 
-![Allocation in a Pool Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/pool4.png)
+![Allocation in a Pool Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/pool4.png)
 
 The linked list doesn't have to be sorted. Its order its determined by the how the allocations and free are done.
 
-![Random State of a Linked List in a Pool Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/pool5.png)
+![Random State of a Linked List in a Pool Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/pool5.png)
 
 _Complexity: **O(1)**_
 
@@ -159,7 +159,7 @@ On deallocations, we get back the allocation header to know the size of the bloc
 
 *Notes: My implementation has some constraints on the size and alignment of the data that can be allocated using **this** allocator. For example, the minimum size that can be allocated should be equals or bigger than the size required of a Free Node. Otherwise, we would be wasting more space in meta-data than in real data (Something similar happens with the alignment) These constraints are related with my implementation. A better implementation would probably handle these cases. I decided not to do so because performance would be drastically affected. In these cases its probably better to use a different allocator.*
 
-![Data structure in a Free list Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/freelist_seq1.png)
+![Data structure in a Free list Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/freelist_seq1.png)
 
 _Complexity: **O(N*HF + M*HA)--> O(M)**_ where N is the number of free blocks, HF is the size of the header of free blocks, M the number of allocated blocks and HA the size of the header of allocated blocks
 
@@ -167,7 +167,7 @@ _Complexity: **O(N*HF + M*HA)--> O(M)**_ where N is the number of free blocks, H
 ### Linked list Allocate
  When an allocation is requested, we look for a block in memory where our data can fit. This means that we have to iterate our linked list until we find a block that has a size equal or bigger than the size requested (it can store this data plus the allocation header) and remove it from the linked list. This would be a **first-fit** allocation because it stops when it finds the first block where the memory fits. There is another type of search called **best-fit** that looks for the free memory block of smaller size that can handle our data. The latter operation may take more time because is always iterating through all elements but it can reduce fragmentation.
 
-![Allocating in a Free list Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/freelist_seq2.png)
+![Allocating in a Free list Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/freelist_seq2.png)
 
 _Complexity: **O(N)**_ where N is the number of free blocks 
 
@@ -200,18 +200,18 @@ The next allocator are even better BUT they are no longer general purpose alloca
 * **Stack allocator** can allocate any size, but deallocations must be done in a LIFO fashion with a _**O(1)**_ complexity. In the chart the complexity is not completely constant due to init function that has to allocate the first big chunk of memory, similarly as before in the pool allocator.
 * **Linear allocator** is the simplest and the best performant allocator with a _**O(1)**_ complexity but its also the most restrictive because single free operations are not allowed. As with the stack, the complexity doesn't look completely constant due to the init function.
 
-![Time complexity of different allocators](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/operations_over_time.png)
+![Time complexity of different allocators](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/operations_over_time.png)
 
 In the next chart we can see that if we don't include the Init() function in the benchmark, the overall execution time is reduced and as a consequence we can effectively see that the Linear, Stack and Pool allocators are constant while malloc and free list are clearly linear. The free list implementation using black tree can reduce the complexity to _**O(log n)**_ and therefore its position in the chart would be between the pool allocator and the free list.
 
-![Time complexity of different allocators](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/operations_over_time_no_init.png)
+![Time complexity of different allocators](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/operations_over_time_no_init.png)
 
 _Note: The time complexity (in general) scales following a linear fashion regarding the size of the allocation request.
 
 ## Space complexity
 As we can see, even that the space complexity for each allocator is slightly different(due to constants), in the end, all of them have the same space complexity **O(N)**. It is very clear, then, why when denoting big O, constants can be ignored: because its weight in the overall equation is very low when N grows.
 
-![Space complexity of different allocators](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/operations_over_space.png)
+![Space complexity of different allocators](https://github.com/stym01/Custom-Allocator-HFT-Engine/tree/master/docs/images/operations_over_space.png)
 
 # Summary
 This is a brief summary describing when you should use each allocator. From more restrictive and efficient allocators to less efficient and general.
