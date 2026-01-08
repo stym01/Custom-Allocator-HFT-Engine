@@ -40,7 +40,7 @@ I designed the engine using a **Zero-Allocation Architecture** on the hot path:
 
 1.  **Incoming Network Packets (Linear Allocator):**
     * TCP buffers need to be parsed, processed, and discarded immediately.
-    * **Strategy:** I use a `LinearAllocator`. It works like a ring buffer; allocations are instant ($O(1)$) pointer increments. When a batch of packets is processed, the entire memory block is reset in a single instruction.
+    * **Strategy:** I use a `LinearAllocator`. It works like a ring buffer; allocations are instant $O(1)$ pointer increments. When a batch of packets is processed, the entire memory block is reset in a single instruction.
     
 2.  **Limit Order Book (Pool Allocator):**
     * Orders (Bid/Ask) are constantly added and removed from the book.
