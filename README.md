@@ -175,7 +175,7 @@ _Complexity: **O(N)**_ where N is the number of free blocks
 First of all we get back the information about the allocation from the header. Then, we iterate the Linked List to intert the free block in the right position (because is sorted by address). Once we've inserted it, we merge contiguous blocks. We can merge in _O(1) because our Linked List is sorted. We only need to look at the previous and next elements in the linked list to see if we can merge this contiguous blocks. This operation of merging contiguous memory blocks to create bigger blocks is called _Coalescence_
 If we used instead a Sorted Linked List of free and allocated blocks, the complexity would be *O(1)* but the allocation compleixity would be *O(N) where N is the number of free and allocated blocks and space complexity would be much higher. When we free a memory block we also look at the previous and next blocks to see if we can merge them into one bigger block. 
 
-![Freeing in a Free list Allocator](https://github.com/mtrebi/memory-allocators/blob/master/docs/images/freelist_seq3.png)
+![Freeing in a Free list Allocator](https://github.com/stym01/Custom-Allocator-HFT-Engine/blob/master/docs/images/freelist_seq3.png)
 
 _Complexity: **O(N)**_ where N is the number of free blocks
 
