@@ -217,16 +217,12 @@ No complex build systems required. You can compile this project directly using `
 
 ```bash
 git clone https://github.com/stym01/Custom-Allocator-HFT-Engine.git
-### 1. Compile the HFT Engine
-g++ -std=c++17 -I includes src/OrderMatcher.cpp -o OrderMatcher
+cd Custom-Allocator-HFT-Engine/
 
-# Run it
+g++ -std=c++17 -I includes src/OrderMatcher.cpp -o OrderMatcher
 ./OrderMatcher
 
-### 2. Compile the Benchmark
 g++ -std=c++17 -I includes src/Benchmark.cpp -o Benchmark
-
-# Run it
 ./Benchmark
 
 ```
