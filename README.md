@@ -5,7 +5,7 @@ A high-performance C++ memory management library featuring 4 custom allocation s
 ---
 # Table of Contents
 &nbsp;[Introduction](https://github.com/stym01/Custom-Allocator-HFT-Engine#introduction)  <br/>
-&nbsp;[Real-World Application: HFT Order Matcher](https://github.com/stym01/Custom-Allocator-HFT-Engine#real-world-application-hft-order-matcher) **(New)** <br/> 
+&nbsp;[Real-World Application: HFT Order Matcher](https://github.com/stym01/Custom-Allocator-HFT-Engine#real-world-application-hft-order-matcher) <br/> 
 &nbsp;[Build instructions](https://github.com/stym01/Custom-Allocator-HFT-Engine#build-instructions)  <br/> 
 &nbsp;[What's wrong with Malloc?](https://github.com/stym01/Custom-Allocator-HFT-Engine#whats-wrong-with-malloc)  <br/> 
 &nbsp;[Custom allocators](https://github.com/stym01/Custom-Allocator-HFT-Engine#custom-allocators)  <br/> 
@@ -56,13 +56,6 @@ Benchmarking 1 million concurrent order operations against standard STL `new`/`d
 
 ---
 
-# Build instructions
-
-```c
-git clone https://github.com/mtrebi/memory-allocators.git
-cmake -S memory-allocator -B build 
-cmake --build build
-```
 
 # Custom allocators
 Because every program has specific needs, it makes no sense to use a general purpose allocator. We can choose the right allocator that works best for us. This way we can increase our **performance**.
@@ -179,17 +172,8 @@ If we used instead a Sorted Linked List of free and allocated blocks, the comple
 
 _Complexity: **O(N)**_ where N is the number of free blocks
 
-### Red black tree data structure
-The purpose of using a Red black tree is to speed up allocations and deallocations. In the Linked List (or sequential) implementation every time an operation was made we needed to iterate the Linked List. This was O(N) in all cases.
-
-Using Red Black trees we can reduce its complexity to O(log N) while keeping space complexity quite low because the tree data is stored inside the free memory blocks. In addition, this structure allows a **best-fit** algorithm to be used, reducing the fragmentation and keeping performance. However, an additional sorted Doubly Linked list is required to store allocated and free elements in order to be able to do coalescence operations in O(1).
-This implementation is the most common and most used in real systems because it offers high flexibility while keeping performance very high.
-
 # Benchmarks
 Now its time to make sure that all the effort in designing and implementing custom memory allocators is worth. 
-I've made several benchmarks with different block sizes, number of operations, random order, etc. The time benchmark measures the time execution that takes initializing the allocator 'Init()' (malloc big chunk, setup additional data structures...) and untill the last operation (allocation or free) is performed.
-
-Here I'm only showing what I believe is relevant for the goal of this project.
 
 ## Time complexity
 * **Malloc** is without doubt the **worst allocator**.Due to its general and flexible use. _**O(n)**_
@@ -202,7 +186,7 @@ The next allocator are even better BUT they are no longer general purpose alloca
 
 ![Time complexity of different allocators](https://github.com/stym01/Custom-Allocator-HFT-Engine/blob/master/docs/images/operations_over_time.png)
 
-In the next chart we can see that if we don't include the Init() function in the benchmark, the overall execution time is reduced and as a consequence we can effectively see that the Linear, Stack and Pool allocators are constant while malloc and free list are clearly linear. The free list implementation using black tree can reduce the complexity to _**O(log n)**_ and therefore its position in the chart would be between the pool allocator and the free list.
+In the next chart we can see that if we don't include the Init() function in the benchmark, the overall execution time is reduced and as a consequence we can effectively see that the Linear, Stack and Pool allocators are constant while malloc and free list are clearly linear. 
 
 ![Time complexity of different allocators](https://github.com/stym01/Custom-Allocator-HFT-Engine/blob/master/docs/images/operations_over_time_no_init.png)
 
@@ -219,41 +203,28 @@ This is a brief summary describing when you should use each allocator. From more
 * **Linear allocator**. If your data does not follows any specific structure. However, there's a common behavior in time: all data "expires" after a certain time and then is no longer useful and thus can be freed. Think about games for example, you can allocate data in one frame using a this allocator and free all data at the start of the next frame.  
 * **Stack allocator**. The same as the Linear allocator but think if it useful to free elements in a LIFO fashion.
 * **Pool allocator**. Your data has definitely a structure. All elements of your data have the same size. This is your choice, fast and no fragmentation.
-* **Buddy allocator** (_Not implemented here_). Your data is organized in exponential sizes power-of-two (1,2,4,8,16,32...). This allocator performs extremely well when data is structure in that way, being fast and wasting little space.
 * **Free list allocator**. No structure or common behavior. This allocator allows you to allocate and free memory as you wish. This is a general purpose allocator that works much better than malloc, but is not as good as the previous allocators, given its flexibility to work in all situations.
 
 # Last thoughts
-* Avoid dynamic memory as much as possible. Its behavior is unexpected and a source of problems
 * If you are worried about performance and your application uses dynamic memory, think about using a custom allocator instead of malloc
 * Try to understand your data and its behavior to choose the right allocator for you. Specific allocators (that impose restrictions on how we can structure/use our data) are far more better than the generic ones. We saw a huge gap between the specific purpose allocator: **Linear, Stack and Pool** and the general purpose: **Free list and Malloc**
 * Always choose a less restrictive (or more general) allocator if unsure. If you later see that your data is structured you can always change to use a more restrictive one.
 
-# Future work
-* Implement every memory allocator assuming that the alignment is always 8 bytes and thus everything is always align (we no longer need headers).
-* Implement a Free list allocator using Red Black Trees to improve performance from O(N) to O(log N)
-* Implement a Buddy allocator
-* Implement a Slab allocator
-* Benchmark internal fragmentation
-* Benchmark spatial location (cache misses)
-
-# Acknowledgments
-
-Thanks to [Vanessa](https://github.com/vipyne) and [Krish](https://github.com/sigmasleep) for helping me in the different stages of this project.
-
 # Build Instructions
+No complex build systems required. You can compile this project directly using `g++` (GCC) on Linux, Windows (MinGW/WSL), or macOS.
 
 ```bash
-# Clone the repository
-git clone [https://github.com/yourusername/MemoryAllocators.git](https://github.com/yourusername/MemoryAllocators.git)
 
-# Create build directory
-mkdir build && cd build
+### 1. Compile the HFT Engine
+g++ -std=c++17 -I includes src/OrderMatcher.cpp -o OrderMatcher
 
-# Generate project files
-cmake ..
-
-# Build
-cmake --build .
-
-# Run the HFT Benchmark
+# Run it
 ./OrderMatcher
+
+### 2. Compile the Benchmark
+g++ -std=c++17 -I includes src/Benchmark.cpp -o Benchmark
+
+# Run it
+./Benchmark
+
+```
