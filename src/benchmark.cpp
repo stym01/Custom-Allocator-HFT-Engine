@@ -1,133 +1,111 @@
 #include <iostream>
+#include <iomanip>
 #include <chrono>
 #include <vector>
+#include <algorithm>
+#include <functional>
 
 #include "../Includes/LinearAllocator.h"
 #include "../Includes/StackAllocator.h"
 #include "../Includes/PoolAllocator.h"
-#include "../Includes/FreeListAllocator.h" 
+#include "../Includes/FreeListAllocator.h"
+
+// Workload: N allocations of a 16-byte object followed by N frees (the Linear
+// allocator can't free individual blocks, so it does N allocations + one Reset).
+// Each allocator is set up (Init) outside the timed region, then the workload is
+// repeated REPS times and the median is reported.
 
 struct Vector4 {
     float x, y, z, w;
 };
 
-const int NUM_OPERATIONS = 500000; 
+const int NUM_OPERATIONS = 1000000;
+const int REPS = 7;
 const size_t TOTAL_SIZE = 512 * 1024 * 1024; // 512 MB
 
-class Timer {
-    std::chrono::high_resolution_clock::time_point start;
-public:
-    void Start() { start = std::chrono::high_resolution_clock::now(); }
-    double Stop() {
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> elapsed = end - start;
-        return elapsed.count();
-    }
-};
+// Accumulating returned pointers here stops the compiler from optimising the loops away.
+volatile uintptr_t g_sink = 0;
+
+double TimeMs(const std::function<void()>& fn) {
+    auto start = std::chrono::steady_clock::now();
+    fn();
+    auto end = std::chrono::steady_clock::now();
+    return std::chrono::duration<double, std::milli>(end - start).count();
+}
+
+double MedianMs(const std::function<void()>& fn) {
+    std::vector<double> samples;
+    for (int r = 0; r < REPS; ++r) samples.push_back(TimeMs(fn));
+    std::sort(samples.begin(), samples.end());
+    return samples[REPS / 2];
+}
+
+void Report(const char* name, double ms, double baselineMs) {
+    double nsPerOp = ms * 1e6 / NUM_OPERATIONS;
+    std::cout << std::left << std::setw(22) << name
+              << std::right << std::setw(10) << std::fixed << std::setprecision(2) << ms << " ms"
+              << std::setw(10) << std::setprecision(1) << nsPerOp << " ns/op"
+              << std::setw(9) << std::setprecision(1) << baselineMs / ms << "x" << std::endl;
+}
 
 int main() {
-    std::cout << "Benchmark started" << std::endl;
-    std::cout << "Operations: " << NUM_OPERATIONS << std::endl;
-    std::cout << "Object Size: " << sizeof(Vector4) << " bytes" << std::endl;
+    std::cout << "Operations: " << NUM_OPERATIONS << " alloc + free, object size "
+              << sizeof(Vector4) << " bytes, median of " << REPS << " runs\n" << std::endl;
 
-    Timer timer;
+    std::vector<void*> ptrs(NUM_OPERATIONS);
 
-    {
-        std::vector<Vector4*> ptrs(NUM_OPERATIONS);
-
-        std::cout << "Testing Standard new/delete..." << std::endl;
-        timer.Start();
-
+    double newDeleteMs = MedianMs([&] {
         for (int i = 0; i < NUM_OPERATIONS; ++i) {
             ptrs[i] = new Vector4();
+            g_sink ^= reinterpret_cast<uintptr_t>(ptrs[i]);
         }
-        
+        for (int i = 0; i < NUM_OPERATIONS; ++i) delete static_cast<Vector4*>(ptrs[i]);
+    });
+
+    LinearAllocator linear(TOTAL_SIZE);
+    linear.Init();
+    double linearMs = MedianMs([&] {
+        for (int i = 0; i < NUM_OPERATIONS; ++i)
+            g_sink ^= reinterpret_cast<uintptr_t>(linear.Allocate(sizeof(Vector4), alignof(Vector4)));
+        linear.Reset();
+    });
+
+    StackAllocator stack(TOTAL_SIZE);
+    stack.Init();
+    double stackMs = MedianMs([&] {
         for (int i = 0; i < NUM_OPERATIONS; ++i) {
-            delete ptrs[i];
+            ptrs[i] = stack.Allocate(sizeof(Vector4), alignof(Vector4));
+            g_sink ^= reinterpret_cast<uintptr_t>(ptrs[i]);
         }
+        for (int i = NUM_OPERATIONS - 1; i >= 0; --i) stack.Deallocate(ptrs[i]); // LIFO only
+    });
 
-        std::cout << "Result: " << timer.Stop() << " ms" << std::endl;
-    }
-
-    {
-        std::cout << "Testing Linear Allocator..." << std::endl;
-        LinearAllocator* linear = new LinearAllocator(TOTAL_SIZE);
-        linear->Init();
-        
-        timer.Start();
-        
+    PoolAllocator pool(TOTAL_SIZE, sizeof(Vector4), alignof(Vector4));
+    pool.Init();
+    double poolMs = MedianMs([&] {
         for (int i = 0; i < NUM_OPERATIONS; ++i) {
-             linear->Allocate(sizeof(Vector4), alignof(Vector4));
+            ptrs[i] = pool.Allocate(sizeof(Vector4));
+            g_sink ^= reinterpret_cast<uintptr_t>(ptrs[i]);
         }
-        linear->Reset();
+        for (int i = 0; i < NUM_OPERATIONS; ++i) pool.Deallocate(ptrs[i]);
+    });
 
-        std::cout << "Result: " << timer.Stop() << " ms" << std::endl;
-        delete linear;
-    }
-
-    {
-        std::cout << "Testing Stack Allocator..." << std::endl;
-        StackAllocator* stack = new StackAllocator(TOTAL_SIZE);
-        stack->Init();
-        
-        std::vector<void*> ptrs(NUM_OPERATIONS);
-
-        timer.Start();
-        
+    FreeListAllocator freeList(TOTAL_SIZE);
+    freeList.Init();
+    double freeListMs = MedianMs([&] {
         for (int i = 0; i < NUM_OPERATIONS; ++i) {
-            ptrs[i] = stack->Allocate(sizeof(Vector4), alignof(Vector4));
+            ptrs[i] = freeList.Allocate(sizeof(Vector4), alignof(Vector4));
+            g_sink ^= reinterpret_cast<uintptr_t>(ptrs[i]);
         }
-        
-        //deallocate (MUST be Reverse Order)
-        for (int i = NUM_OPERATIONS - 1; i >= 0; --i) {
-            stack->Deallocate(ptrs[i]);
-        }
+        for (int i = 0; i < NUM_OPERATIONS; ++i) freeList.Deallocate(ptrs[i]);
+    });
 
-        std::cout << "Result: " << timer.Stop() << " ms" << std::endl;
-        delete stack;
-    }
-
-    {
-        std::cout << "Testing Pool Allocator..." << std::endl;
-        PoolAllocator* pool = new PoolAllocator(TOTAL_SIZE, sizeof(Vector4), alignof(Vector4));
-        pool->Init();
-        
-        std::vector<void*> ptrs(NUM_OPERATIONS);
-
-        timer.Start();
-
-        for (int i = 0; i < NUM_OPERATIONS; ++i) {
-            ptrs[i] = pool->Allocate(sizeof(Vector4));
-        }
-        
-        for (int i = 0; i < NUM_OPERATIONS; ++i) {
-            pool->Deallocate(ptrs[i]);
-        }
-
-        std::cout << "Result: " << timer.Stop() << " ms" << std::endl;
-        delete pool;
-    }
-    
-    {
-        std::cout << "Testing Free List Allocator..." << std::endl;
-        FreeListAllocator* freeList = new FreeListAllocator(TOTAL_SIZE);
-        freeList->Init();
-        
-        std::vector<void*> ptrs(NUM_OPERATIONS);
-
-        timer.Start();
-
-        for (int i = 0; i < NUM_OPERATIONS; ++i) {
-            ptrs[i] = freeList->Allocate(sizeof(Vector4), alignof(Vector4));
-        }
-
-        for (int i = 0; i < NUM_OPERATIONS; ++i) {
-            freeList->Deallocate(ptrs[i]);
-        }
-
-        std::cout << "Result: " << timer.Stop() << " ms" << std::endl;
-        delete freeList;
-    }
-
+    std::cout << std::left << std::setw(22) << "Allocator" << std::right << std::setw(13) << "Median"
+              << std::setw(16) << "Per op" << std::setw(10) << "Speedup" << std::endl;
+    Report("new/delete", newDeleteMs, newDeleteMs);
+    Report("Linear (alloc+Reset)", linearMs, newDeleteMs);
+    Report("Stack", stackMs, newDeleteMs);
+    Report("Pool", poolMs, newDeleteMs);
+    Report("Free List", freeListMs, newDeleteMs);
     return 0;
 }
