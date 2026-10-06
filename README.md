@@ -2,6 +2,8 @@
 
 Four custom memory allocators written from scratch — **Linear, Stack, Pool and Free-List** — and a small limit-order-book matching engine that uses them so that the matching hot path never calls `new`/`malloc`.
 
+📝 **Full write-up:** [Custom Memory Allocators for an Order Matching Engine in C++](https://www.satyamk.dev/blog/building-hft-engine-cpp), covering how each allocator works, how the order book uses them, and how a fair benchmark changed the headline number from 16× to 2.5×.
+
 ---
 
 ## What's in the repo
@@ -80,3 +82,8 @@ g++ -std=c++17 -O2 -I Includes src/OrderMatcher.cpp -o OrderMatcher
 g++ -std=c++17 -O2 -I Includes src/benchmark.cpp -o benchmark
 ./benchmark
 ```
+
+
+---
+
+Built by [Satyam Kesharwani](https://www.satyamk.dev) · [LinkedIn](https://www.linkedin.com/in/stym01/) · [Engineering blog](https://www.satyamk.dev/blog)
